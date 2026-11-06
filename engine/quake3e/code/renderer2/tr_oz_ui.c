@@ -557,17 +557,28 @@ static uiTexture_t *UI_Texture( int handle ) {
 static int UI_Slot( void **array, int *max, int size, int (*isFree)( const void *slot ) ) {
 	int i, newMax;
 	byte *grown;
+	size_t newSize;
 
+	if ( size <= 0 || *max < 0 ) {
+		Com_Error( ERR_FATAL, "UI_Slot: invalid capacity" );
+	}
 	for ( i = 0; i < *max; i++ ) {
-		if ( isFree( (const byte *)*array + i * size ) ) {
+		if ( isFree( (const byte *)*array + (size_t)i * (size_t)size ) ) {
 			return i;
 		}
 	}
+	if ( *max > INT_MAX / 2 ) {
+		Com_Error( ERR_FATAL, "UI_Slot: capacity overflow" );
+	}
 	newMax = *max ? *max * 2 : 256;
-	grown = ri.Malloc( newMax * size );
-	Com_Memset( grown, 0, newMax * size );
+	if ( (size_t)newMax > (size_t)-1 / (size_t)size ) {
+		Com_Error( ERR_FATAL, "UI_Slot: allocation size overflow" );
+	}
+	newSize = (size_t)newMax * (size_t)size;
+	grown = ri.Malloc( newSize );
+	Com_Memset( grown, 0, newSize );
 	if ( *array ) {
-		Com_Memcpy( grown, *array, *max * size );
+		Com_Memcpy( grown, *array, (size_t)*max * (size_t)size );
 		ri.Free( *array );
 	}
 	*array = grown;
